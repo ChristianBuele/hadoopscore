@@ -6,10 +6,15 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import java.io.IOException;
+import java.util.Map;
 
 public class ScoreMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
     private final static IntWritable points = new IntWritable();
     private Text team = new Text();
+    private Map<String,String> teamNames = Map.of(
+            "Alavés", "Deportivo Alavés",
+            "R. Sociedad", "Real Sociedad"
+    );
 
     @Override
     protected void map(LongWritable key, Text value, Context context)
@@ -24,8 +29,8 @@ public class ScoreMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
                 return; // Skip rows with insufficient data
             }
 
-            String localTeam = data[5].trim();
-            String visitorTeam = data[6].trim();
+            String localTeam = this.getTeamName(data[5].trim());
+            String visitorTeam = this.getTeamName(data[6].trim());
             Integer[] scores = goals(data[3].trim());
             Integer localScore = scores[0];
             Integer visitorScore = scores[1];
@@ -58,12 +63,16 @@ public class ScoreMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
                 context.write(team, points);
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            System.out.println("Error processing row: " + value.toString());
         }
     }
 
     private String[] splitRowData(String row) {
         return row.split(",");
+    }
+
+    private String getTeamName(String team) {
+        return  teamNames.getOrDefault(team, team);
     }
 
     private Integer[] goals(String scoreData){
